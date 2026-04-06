@@ -1,0 +1,12 @@
+from passlib.context import CryptContext
+
+# Cost factor 12: ~300ms per hash on modern hardware
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
