@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from app.auth.jwt import decode_token
+from app.auth.revocation import is_revoked
 from app.repositories.user_repository import UserRepository, get_user_repo
 from app.models import User
 
@@ -21,6 +22,10 @@ async def get_current_user(
     try:
         payload = decode_token(token)
         if payload.get("type") != "access":
+            raise credentials_exception
+        # Check revocation list (populated by logout)
+        jti = payload.get("jti")
+        if jti and is_revoked(jti):
             raise credentials_exception
         user_id: str = payload.get("sub")
         if user_id is None:

@@ -1,12 +1,14 @@
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 from app.auth.jwt import create_access_token, create_refresh_token, decode_token
-from app.auth.password import hash_password
+from app.auth.revocation import revoke
+from app.auth.dependencies import get_current_user
 from app.repositories.user_repository import UserRepository, get_user_repo
 from app.services.user_service import UserService
+from app.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -63,7 +65,10 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest):
+async def refresh(
+    body: RefreshRequest,
+    user_repo: UserRepository = Depends(get_user_repo),
+):
     try:
         payload = decode_token(body.refresh_token)
         if payload.get("type") != "refresh":
@@ -72,7 +77,27 @@ async def refresh(body: RefreshRequest):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
+    # Verify user still exists and is active — a valid token is not enough
+    user = await user_repo.get(user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+
     return TokenResponse(
         access_token=create_access_token(subject=user_id),
         refresh_token=create_refresh_token(subject=user_id),
     )
+
+
+oauth2_scheme_local = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    token: str = Depends(oauth2_scheme_local),
+    current_user: User = Depends(get_current_user),
+):
+    """Revoke the current access token by adding its jti to the blacklist."""
+    payload = decode_token(token)
+    jti = payload.get("jti")
+    if jti:
+        revoke(jti)
