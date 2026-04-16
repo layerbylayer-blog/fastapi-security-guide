@@ -52,12 +52,14 @@ async def client(db_session):
 @pytest_asyncio.fixture(scope="function")
 async def registered_user(client) -> dict:
     """Register a user and return credentials."""
+    import uuid
+    username = f"testuser_{uuid.uuid4().hex[:8]}"
     response = await client.post("/auth/register", json={
-        "username": "testuser",
+        "username": username,
         "password": "StrongPass123!",
     })
     assert response.status_code == 201
-    return {"username": "testuser", "password": "StrongPass123!"}
+    return {"username": username, "password": "StrongPass123!"}
 
 
 @pytest_asyncio.fixture(scope="function")

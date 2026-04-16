@@ -3,7 +3,7 @@ from app.repositories.user_repository import UserRepository
 from app.models import User
 
 # Dummy hash used for timing-safe authentication when user doesn't exist
-_DUMMY_HASH = "$2b$12$dummy.hash.to.prevent.timing.attack.xxxxxxxxxxxxxxxxxx"
+_DUMMY_HASH = "$2b$12$Wp815XjnQdZOIJZqaJioruc3qYeViENIrNKTLUInB.s.xz0F58Mdq"
 
 
 class UserService:
